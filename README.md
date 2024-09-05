@@ -16,130 +16,198 @@ Testing algorithm with different key values.
 
 ## PROGRAM:
 ```
-#include<stdio.h>
-#include<conio.h>
-#include<string.h>
-#include<ctype.h>
-#define MX 5
-void playfair(char ch1,char ch2, char key[MX][MX])
-{
-int i,j,w,x,y,z;
-FILE *out;
-if((out=fopen("cipher.txt","a+"))==NULL)
-{
-printf("File Corrupted.");
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
+
+#define SIZE 30
+
+void toLowerCase(char plain[], int ps) {
+    for (int i = 0; i < ps; i++) {
+        if (plain[i] >= 'A' && plain[i] <= 'Z') {
+            plain[i] += 32; // Convert to lowercase
+        }
+    }
 }
-for(i=0;i<MX;i++)
-{
-for(j=0;j<MX;j++)
-{
-if(ch1==key[i][j])
-{
-w=i;
-x=j;
+
+int removeSpaces(char *plain, int ps) {
+    int count = 0;
+    for (int i = 0; i < ps; i++) {
+        if (plain[i] != ' ') {
+            plain[count++] = plain[i];
+        }
+    }
+    plain[count] = '\0';
+    return count;
 }
-else if(ch2==key[i][j])
-{
-y=i;
-z=j;
-}}}
-//printf("%d%d %d%d",w,x,y,z);
-if(w==y)
-{
-x=(x+1)%5;z=(z+1)%5;
-printf("%c%c",key[w][x],key[y][z]);
-fprintf(out, "%c%c",key[w][x],key[y][z]);
+
+void generateKeyTable(char key[], int ks, char keyT[5][5]) {
+    int i, j, k;
+    int *dicty = (int *)calloc(26, sizeof(int)); // A 26 character hashmap to store count of the alphabet
+
+    for (i = 0; i < ks; i++) {
+        if (key[i] != 'j') {
+            dicty[key[i] - 97] = 2;
+        }
+    }
+    dicty['j' - 97] = 1;
+
+    i = 0;
+    j = 0;
+    for (k = 0; k < ks; k++) {
+        if (dicty[key[k] - 97] == 2) {
+            dicty[key[k] - 97] -= 1;
+            keyT[i][j] = key[k];
+            j++;
+            if (j == 5) {
+                i++;
+                j = 0;
+            }
+        }
+    }
+
+    for (k = 0; k < 26; k++) {
+        if (dicty[k] == 0) {
+            keyT[i][j] = (char)(k + 97);
+            j++;
+            if (j == 5) {
+                i++;
+                j = 0;
+            }
+        }
+    }
+    free(dicty);
 }
-else if(x==z)
-{
-w=(w+1)%5;y=(y+1)%5;
-printf("%c%c",key[w][x],key[y][z]);
-fprintf(out, "%c%c",key[w][x],key[y][z]);
+
+void search(char keyT[5][5], char a, char b, int arr[]) {
+    if (a == 'j') a = 'i';
+    if (b == 'j') b = 'i';
+
+    for (int i = 0; i < 5; i++) {
+        for (int j = 0; j < 5; j++) {
+            if (keyT[i][j] == a) {
+                arr[0] = i;
+                arr[1] = j;
+            } else if (keyT[i][j] == b) {
+                arr[2] = i;
+                arr[3] = j;
+            }
+        }
+    }
 }
-else
-{
-printf("%c%c",key[w][z],key[y][x]);
-fprintf(out, "%c%c",key[w][z],key[y][x]);
+
+int mod5(int a) {
+    return (a % 5);
 }
-fclose(out);
+
+int prepare(char str[], int *ptrs) {
+    if (*ptrs % 2 != 0) {
+        str[(*ptrs)++] = 'x';
+    }
+    str[*ptrs] = '\0';
+    return *ptrs;
 }
-int main()
-{
-int i,j,k=0,l,m=0,n;
-char key[MX][MX],keyminus[25],keystr[10],str[25]={0};
-char
-alpa[26]={'A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X',
-Y','Z'};
-printf("\nEnter key:");
-gets(keystr);
-printf("\nEnter the plain text:");
-gets(str);
-n=strlen(keystr);
-//convert the characters to uppertext
-for (i=0; i<n; i++)
-{
-if(keystr[i]=='j')keystr[i]='i';
-else if(keystr[i]=='J')keystr[i]='I';
-keystr[i] = toupper(keystr[i]);
+
+void encrypt(char str[], char keyT[5][5], int ps) {
+    int a[4];
+
+    for (int i = 0; i < ps; i += 2) {
+        if (i + 1 == ps) { // If odd length and no filler, skip last character
+            break;
+        }
+
+        search(keyT, str[i], str[i + 1], a);
+        if (a[0] == a[2]) {
+            str[i] = keyT[a[0]][mod5(a[1] + 1)];
+            str[i + 1] = keyT[a[0]][mod5(a[3] + 1)];
+        } else if (a[1] == a[3]) {
+            str[i] = keyT[mod5(a[0] + 1)][a[1]];
+            str[i + 1] = keyT[mod5(a[2] + 1)][a[1]];
+        } else {
+            str[i] = keyT[a[0]][a[3]];
+            str[i + 1] = keyT[a[2]][a[1]];
+        }
+    }
 }
-//convert all the characters of plaintext to uppertext
-for (i=0; i<strlen(str); i++)
-{
-if(str[i]=='j')str[i]='i';
-else if(str[i]=='J')str[i]='I';
-str[i] = toupper(str[i]);
+
+void decrypt(char str[], char keyT[5][5], int ps) {
+    int a[4];
+
+    for (int i = 0; i < ps; i += 2) {
+        if (i + 1 == ps) { // If odd length and no filler, skip last character
+            break;
+        }
+
+        search(keyT, str[i], str[i + 1], a);
+        if (a[0] == a[2]) {
+            str[i] = keyT[a[0]][mod5(a[1] + 4)];
+            str[i + 1] = keyT[a[0]][mod5(a[3] + 4)];
+        } else if (a[1] == a[3]) {
+            str[i] = keyT[mod5(a[0] + 4)][a[1]];
+            str[i + 1] = keyT[mod5(a[2] + 4)][a[1]];
+        } else {
+            str[i] = keyT[a[0]][a[3]];
+            str[i + 1] = keyT[a[2]][a[1]];
+        }
+    }
+
+    if (ps > 0 && str[ps - 1] == 'x') {
+        str[ps - 1] = '\0';
+    }
 }
-j=0;
-for(i=0;i<26;i++)
-{
-for(k=0;k<n;k++)
-{
-if(keystr[k]==alpa[i])
-break;
-else if(alpa[i]=='J')
-break;
+
+void encryptByPlayfairCipher(char str[], char key[]) {
+    char keyT[5][5];
+    int ks, ps;
+
+    ks = strlen(key);
+    ks = removeSpaces(key, ks);
+    toLowerCase(key, ks);
+
+    ps = strlen(str);
+    toLowerCase(str, ps);
+    ps = removeSpaces(str, ps);
+    ps = prepare(str, &ps); // Prepare plaintext
+
+    generateKeyTable(key, ks, keyT);
+    encrypt(str, keyT, ps);
 }
-if(k==n)
-{
-keyminus[j]=alpa[i];j++;
+
+void decryptByPlayfairCipher(char str[], char key[]) {
+    char keyT[5][5];
+    int ks, ps;
+
+    ks = strlen(key);
+    ks = removeSpaces(key, ks);
+    toLowerCase(key, ks);
+
+    ps = strlen(str);
+    toLowerCase(str, ps);
+    ps = removeSpaces(str, ps);
+
+    generateKeyTable(key, ks, keyT);
+    decrypt(str, keyT, ps);
 }
-}
-//construct key keymatrix
-k=0;
-for(i=0;i<MX;i++)
-{
-for(j=0;j<MX;j++)
-{
-if(k<n)
-{
-key[i][j]=keystr[k];
-k++;}
-else
-{
-key[i][j]=keyminus[m];m++;
-}
-printf("%c ",key[i][j]);
-}
-printf("\n");
-}
-printf("\n\nEntered text :%s\nCipher Text :",str);
-for(i=0;i<strlen(str);i++)
-{
-if(str[i]=='J')str[i]='I';
-if(str[i+1]=='\0')
-playfair(str[i],'X',key);
-else
-{
-if(str[i+1]=='J')str[i+1]='I';
-if(str[i]==str[i+1])
-playfair(str[i],'X',key);
-else
-{
-playfair(str[i],str[i+1],key);
-i++;
-}}
-}
-return 0;
+
+int main() {
+    char str[SIZE], key[SIZE];
+
+    printf("Enter the key: ");
+    fgets(key, SIZE, stdin);
+    key[strcspn(key, "\n")] = '\0'; // Remove trailing newline
+
+    printf("Enter the plaintext: ");
+    fgets(str, SIZE, stdin);
+    str[strcspn(str, "\n")] = '\0'; // Remove trailing newline
+
+    encryptByPlayfairCipher(str, key);
+    printf("Cipher text: %s\n", str);
+
+    decryptByPlayfairCipher(str, key);
+    printf("Decrypted text: %s\n", str);
+
+    return 0;
 }
 ```
 ## OUTPUT:
