@@ -214,7 +214,7 @@ int main() {
     printf("Key text: %s\n", key);
 
     // Plaintext to be encrypted
-    strcpy(str, "PERARASU");
+    strcpy(str, "SWATHI");
     printf("Plain text: %s\n", str);
 
     // Encrypt using Playfair Cipher
